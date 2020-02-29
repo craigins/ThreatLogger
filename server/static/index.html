@@ -1,0 +1,181 @@
+<html>
+
+<head>
+  <script>
+    function sortSlices(a, b) {
+      return a._timestamp - b._timestamp;
+    }
+
+    function sortMobs(a, b) {
+      return a.start - b.start;
+    }
+
+    function reorgData(threatdata) {
+      let newdata = [];
+      for (let attr in threatdata) {
+        if ("_count" == attr) continue;
+        let mob = threatdata[attr];
+        let newmob = {
+          guid: attr,
+          name: mob.name,
+          start: parseFloat(mob.start),
+          threat: []
+        };
+        newdata.push(newmob);
+
+        for (let tstamp in mob) {
+          if ("name" == tstamp || "start" == tstamp) continue;
+          let tval = mob[tstamp];
+          tval._timestamp = parseFloat(tstamp);
+          newmob.threat.push(tval);
+        }
+        newmob.threat.sort(sortSlices);
+      }
+      newdata.sort(sortMobs);
+      return newdata;
+    }
+
+    function reformatLua(strdata) {
+      strdata = strdata.toString().replace(/\t/g, "");
+      strdata = strdata.substring(strdata.indexOf('{'));
+      strdata = strdata.replace(/\[/g, "");
+      strdata = strdata.replace(/\] = /g, ": ");
+      strdata = strdata.replace(/(\r\n|\n|\r)/gm, "");
+      strdata = strdata.replace(/,}/g, "}");
+      let threatdata = JSON.parse(strdata);
+      return reorgData(threatdata);
+    }
+
+    function formatDate(dt) {
+      let datepart = `${(dt.getYear() + 1900).toString().padStart(4, "0")}-${(dt.getMonth() + 1).toString().padStart(2, "0")}-${(dt.getDate()).toString().padStart(2, "0")}`;
+      let timepart = `${(dt.getHours()).toString().padStart(2, "0")}:${(dt.getMinutes()).toString().padStart(2, "0")}:${(dt.getSeconds()).toString().padStart(2, "0")}`;
+      return `${datepart} ${timepart}`;
+    }
+
+  </script>
+
+</head>
+
+<body>
+  <!-- html5rocks.com/en/tutorials/file/dndfiles/-->
+  <input type="file" id="threatfile" name="threatfile" />
+  <div id="mobs">
+    <select id="fights" name="fights" onchange="graphThreat(this);">
+
+    </select>
+  </div>
+  <script>
+    let threatdata;
+    function graphThreat(fightSelect) {
+      let idx = fightSelect.options[fightSelect.selectedIndex].value;
+      if(idx == -1)return;
+      let mob = threatdata[idx];
+      console.log(mob);
+      //build player list
+      let players = {};
+      let skipattrs = {
+        "_timestamp": true,
+        "_targetGUID": true,
+        "_target": true,
+        "_offset": true
+      };
+      for (let item of mob.threat) {
+        for (let name in item) {
+          if (skipattrs[name]) continue;
+          players[name] = true;
+        }
+      }
+      //build chart data
+      let data = [];
+      for (let item of mob.threat) {
+        let row = [item._timestamp - mob.start];
+        for (let name in players) {
+          row.push(item[name] ? item[name].absolute : 0);
+        }
+        data.push(row);
+      }
+      let columns = ["X"];
+      for (let name in players) {
+        columns.push(name);
+      }
+      drawCurveTypes(columns, data);
+    }
+    function handleFileSelect(evt) {
+      var f = evt.target.files[0];
+      var reader = new FileReader();
+
+      // Closure to capture the file information.
+      reader.onload = (function (theFile) {
+        return function (e) {
+          threatdata = reformatLua(e.target.result);
+          let fightSelect = document.getElementById('fights');
+          fightSelect.innerHTML = '<option value="-1"> - </option>';
+          for (let i = 0; i < threatdata.length; i++) {
+            let mob = threatdata[i];
+            let option = document.createElement("option");
+            option.value = i;
+            option.innerHTML = `[${formatDate(new Date(mob.start * 1000.0))}] ${mob.name}`;
+            fightSelect.add(option);
+          }
+        };
+      })(f);
+      reader.readAsText(f);
+    }
+
+    document.getElementById('threatfile').addEventListener('change', handleFileSelect, false);
+  </script>
+
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <div id="chart_div" style="height:500px;"></div>
+  <script>
+    google.charts.load('current', { packages: ['corechart', 'line'] });
+    google.charts.setOnLoadCallback(drawDefaultGraph);
+
+    function drawDefaultGraph() {
+      let columns = ['X', 'Dogs', 'Cats'];
+      let rows = [
+        [0, 0, 0], [1, 10, 5], [2, 23, 15], [3, 17, 9], [4, 18, 10], [5, 9, 5],
+        [6, 11, 3], [7, 27, 19], [8, 33, 25], [9, 40, 32], [10, 32, 24], [11, 35, 27],
+        [12, 30, 22], [13, 40, 32], [14, 42, 34], [15, 47, 39], [16, 44, 36], [17, 48, 40],
+        [18, 52, 44], [19, 54, 46], [20, 42, 34], [21, 55, 47], [22, 56, 48], [23, 57, 49],
+        [24, 60, 52], [25, 50, 42], [26, 52, 44], [27, 51, 43], [28, 49, 41], [29, 53, 45],
+        [30, 55, 47], [31, 60, 52], [32, 61, 53], [33, 59, 51], [34, 62, 54], [35, 65, 57],
+        [36, 62, 54], [37, 58, 50], [38, 55, 47], [39, 61, 53], [40, 64, 56], [41, 65, 57],
+        [42, 63, 55], [43, 66, 58], [44, 67, 59], [45, 69, 61], [46, 69, 61], [47, 70, 62],
+        [48, 72, 64], [49, 68, 60], [50, 66, 58], [51, 65, 57], [52, 67, 59], [53, 70, 62],
+        [54, 71, 63], [55, 72, 64], [56, 73, 65], [57, 75, 67], [58, 70, 62], [59, 68, 60],
+        [60, 64, 56], [61, 60, 52], [62, 65, 57], [63, 67, 59], [64, 68, 60], [65, 69, 61],
+        [66, 70, 62], [67, 72, 64], [68, 75, 67], [69, 80, 72]
+      ];
+      drawCurveTypes(columns, rows);
+    }
+    let chartData = {};
+    function drawCurveTypes(columns, rows) {
+      chartData.columns = columns;
+      chartData.rows = rows;
+      var data = new google.visualization.DataTable();
+      for (let col of columns) {
+        data.addColumn('number', col);
+      }
+
+      data.addRows(rows);
+
+      var options = {
+        hAxis: {
+          title: 'Time'
+        },
+        vAxis: {
+          title: 'Threat'
+        },
+        series: {
+          1: { curveType: 'function' }
+        }
+      };
+
+      var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+      chart.draw(data, options);
+    }
+  </script>
+</body>
+
+</html>

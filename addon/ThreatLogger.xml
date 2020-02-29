@@ -1,0 +1,9 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!-- Init -->
+	<Script file="core\init.lua"/>
+	<!-- Libraries -->
+	<Script file="Libs\LibStub\LibStub.lua"/>
+	<Include file="Libs\LibThreatClassic2\lib.xml"/>
+	<!-- Core -->
+	<Script file="core\core.lua"/>
+</Ui>

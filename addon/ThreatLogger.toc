@@ -1,0 +1,7 @@
+## Interface: 11303
+## Title: ThreatLogger
+## Author: Craigins
+## Version: 0.1
+## SavedVariables: TC2_Log
+
+ThreatLogger.xml
